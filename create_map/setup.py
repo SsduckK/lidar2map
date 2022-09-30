@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-	        f"create_map = {package_name}.create_map:main"
+	        f"read_lidar = {package_name}.read_lidar:main"
         ],
     },
 )
