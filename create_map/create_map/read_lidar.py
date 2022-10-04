@@ -5,6 +5,7 @@ import math
 
 from std_msgs.msg import Float32MultiArray
 from sensor_msgs.msg import LaserScan
+from geometry_msgs.msg import PoseArray
 from rclpy.node import Node
 
 class ReadLidar(Node):
