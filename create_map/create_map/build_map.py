@@ -5,14 +5,15 @@ import config as cfg
 
 
 class MapRenderer:
-    def __init__(self, map):
+    def __init__(self, map, ctgr_heights):
         self.USE_OBSTACLE = True
         self.SEMANTIC = True
         self.categories = ["nothing", "floor", "wall", "door", "obstacle", "window"]
-        self.ctgr_heights = [0, 0.1, 0.1, 0.6, 3, 6]
+        self.ctgr_heights = ctgr_heights
         self.default_height = 0
         # TODO
-        self.ctgr_colors = [[0, 0, 0], [1, 1, 1], [0.6, 0.6, 0.6], [0.6, 0.4, 0], [1, 1, 0], [0.058, 0.878, 1]]
+        # self.ctgr_colors = [[0, 0, 0], [1, 1, 1], [0.6, 0.6, 0.6], [0.6, 0.4, 0], [1, 1, 0], [0.058, 0.878, 1]]
+        self.ctgr_colors = [[0, 0, 0], [1, 1, 1], [0, 0, 0], [0.6, 0.4, 0], [0.6, 0.6, 0.6], [0.058, 0.878, 1]]
         self.map = map
         v, t = self.create_mesh_data(self.map)
         self.vert_packs = v
@@ -37,7 +38,6 @@ class MapRenderer:
         return vert_packs, tria_packs
 
     def get_cube_vertices(self, grid_xyz, grid_res, height):
-        height /= grid_res
         relative_xyz = np.array([[0, 0, 0],
                                  [1, 0, 0],
                                  [0, 1, 0],
@@ -47,7 +47,7 @@ class MapRenderer:
                                  [0, 1, height],
                                  [1, 1, height]], dtype=float)
         relative_xyz[:, 2] += self.default_height
-        relative_xyz *= grid_res
+        relative_xyz[:, :2] *= grid_res
         vertices = []
         for rel_xyz in relative_xyz:
             cube_vertex = grid_xyz + rel_xyz
@@ -127,7 +127,7 @@ class MapRenderer:
             meshes.append(mesh)
         mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0.1])
         meshes.append(mesh_frame)
-        o3d.visualization.draw_geometries(meshes)
+        # o3d.visualization.draw_geometries(meshes)
         return meshes
 
     def draw_ceiling(self):
@@ -160,8 +160,8 @@ class MapRenderer:
 class OccupancyMapRenderer(MapRenderer):
     def __init__(self, filename):        
         map = self.read_map(filename)
-        super().__init__(map)
-        self.ctgr_heights = [0, 0.1, 0.1, 0.6, 3, 6]
+        ctgr_heights = [0, 0.1, 0.1, 0.6, 3, 6]
+        super().__init__(map, ctgr_heights)
         self.default_height = -0.1
 
 
@@ -180,9 +180,10 @@ class OccupancyMapRenderer(MapRenderer):
 
 class SemanticMapRenderer(MapRenderer):
     def __init__(self, map):
-        self.ctgr_heights = [0, 0.1, 5, 0.6, 3, 6]
+        ctgr_heights = [0, 0.1, 5, 0.6, 1, 6]
+        super().__init__(map, ctgr_heights)
+
         self.default_height = 0
-        super().__init__(map)
 
 
 
