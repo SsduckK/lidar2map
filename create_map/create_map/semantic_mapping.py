@@ -40,7 +40,7 @@ class CreateMap(Node):
         filtered_msg = message_filters.ApproximateTimeSynchronizer([depth, odom], 1, 0.3)
         filtered_msg.registerCallback(self.callback)
         qos_profile = QoSProfile(depth=10)
-        self.rgb_subscriber = self.create_subscription(Image, '/frames', self.show_rgb, qos_profile)
+        # self.rgb_subscriber = self.create_subscription(Image, '/frames', self.show_rgb, qos_profile)
 
         self.vis.create_window()
         self.vis.get_view_control()
@@ -52,7 +52,6 @@ class CreateMap(Node):
         transform_matrix = self.pose_to_matrix(pose)
         pcd_in_cam = self.get_point_cloud(depth)
         pcd_in_glb = self.transform_to_global(pcd_in_cam, transform_matrix)
-        # o3d.visualization.draw_geometries([pcd_in_glb])
         self.grid_label_count += self.count_labels(self.grid_label_count, pcd_in_glb)
         class_map = self.convert_to_semantic_map(self.grid_label_count) 
         smnt_map = SemanticMapRenderer(class_map)
@@ -72,10 +71,9 @@ class CreateMap(Node):
         depth_image = self.bridge.imgmsg_to_cv2(depth, "16UC1") 
         depth_image = o3d.geometry.Image(depth_image)
         pcd = o3d.geometry.PointCloud.create_from_depth_image(depth_image, self.intrinsic)
-        # pcd.scale(0.001, center=np.array([0,0,0]))
-        # pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,2] < 2)[0])
-        # pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,0] < 0.4)[0])
-        # pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,0] > -0.4)[0])
+        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,2] < 2)[0])
+        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,0] < 0.4)[0])
+        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,0] > -0.4)[0])
         pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,1] < 0.1)[0])
         pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,1] > -0.9)[0])
         return pcd
@@ -116,15 +114,15 @@ class CreateMap(Node):
             o3d.visualization.draw_geometries(self.occp_map.build + self.accumulated_map + [frame])
         # o3d.visualization.draw_geometries(self.occp_map.build + semantic_map.build + [frame])
         # o3d.visualization.draw_geometries(semantic_map.build)
-        o3d.visualization.draw_geometries([pcd_in_glb])
-        # self.vis.add_geometry(frame)
-        # self.vis.add_geometry(pcd_in_glb)
+        # o3d.visualization.draw_geometries([pcd_in_glb])
+        self.vis.add_geometry(frame)
+        self.vis.add_geometry(pcd_in_glb)
+        for i in semantic_map.build:
+            self.vis.add_geometry(i)
+        self.vis.run()
         # for i in semantic_map.build:
-        #     self.vis.add_geometry(i)
-        # self.vis.run()
-        # # for i in semantic_map.build:
-        # #     self.vis.remove_geometry(i)
-        # self.vis.remove_geometry(pcd_in_glb)
+        #     self.vis.remove_geometry(i)
+        self.vis.remove_geometry(pcd_in_glb)
 
     def show_rgb(self, rgb):
         rgb_image = self.bridge.imgmsg_to_cv2(rgb, "8UC3")
