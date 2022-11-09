@@ -116,7 +116,8 @@ class MapRenderer:
         cv2.waitKey()
 
     def draw_mesh_3d(self):
-        meshes = []
+        # meshes = []
+        meshes = o3d.geometry.TriangleMesh()
         for ctgr_idx, category in enumerate(self.categories):
             if ctgr_idx == 0:
                 continue
@@ -124,10 +125,11 @@ class MapRenderer:
             triangles = self.tria_packs[ctgr_idx]
             triangles = np.reshape(triangles, (-1, 3))
             mesh = self.create_mesh_object(vertices, triangles, self.ctgr_colors[ctgr_idx])
-            meshes.append(mesh)
+            # meshes.append(mesh)
+            meshes += mesh
         mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0.1])
-        meshes.append(mesh_frame)
-        # o3d.visualization.draw_geometries(meshes)
+        # meshes.append(mesh_frame)
+        # o3d.visualization.draw_geometries([meshes])
         return meshes
 
     def draw_ceiling(self):
@@ -188,5 +190,5 @@ class SemanticMapRenderer(MapRenderer):
 
 
 if __name__ == "__main__":
-    file = '/home/ri/bagfiles/test_lab/third/converted3.txt'
-    map = MapRenderer(file)
+    file = '/home/ri/ws/converted_map/firstdate_second.txt'
+    map = OccupancyMapRenderer(file)

@@ -6,47 +6,61 @@ import copy
 import cv2
 
 from cv_bridge import CvBridge
+from std_msgs.msg import Int8MultiArray, Int16MultiArray
 from sensor_msgs.msg import Image
 from nav_msgs.msg import Odometry
 from rclpy.node import Node
-from rclpy.qos import qos_profile_parameters
 from build_map import OccupancyMapRenderer, SemanticMapRenderer
-import pyrealsense2 as rs
 import open3d as o3d
 import config as cfg
 
+
 class CreateMap(Node):
-    def __init__(self, base_map_path):      
+    def __init__(self):      
         super().__init__("semantic_map")
         self.bridge = CvBridge()
-        self.occp_map = OccupancyMapRenderer(base_map_path)
-        self.grid_label_count = np.zeros((*self.occp_map.map.shape, cfg.NUM_CLASS), dtype=int)
+        self.map, self.map_shape = np.zeros((1, 1)), 0
+        qos_profile = QoSProfile(depth=10)
+        self.map_sub = self.create_subscription(Int16MultiArray, "grid_map", self.map_callback, qos_profile)
+        self.map_sub
+        self.occp_map = 0
+        self.grid_label_count = 0
         self.vis = o3d.visualization.Visualizer()
         self.frame_index = 0
         self.accumulated_map = []
         self.intrinsic = o3d.camera.PinholeCameraIntrinsic(848, 480, 418.874, 418.874, 427.171, 239.457)
         self.cam_to_base = cfg.CAM_TO_BASE
+
         depth = message_filters.Subscriber(self, Image, "/camera/depth/image_rect_raw")
         odom = message_filters.Subscriber(self, Odometry, "/odom")
         filtered_msg = message_filters.ApproximateTimeSynchronizer([depth, odom], 1, 0.3)
         filtered_msg.registerCallback(self.callback)
-        qos_profile = QoSProfile(depth=10)
+
         # self.rgb_subscriber = self.create_subscription(Image, '/frames', self.show_rgb, qos_profile)
 
         self.vis.create_window()
         self.vis.get_view_control()
-        for i in self.occp_map.build:
-            self.vis.add_geometry(i)
     
+    def map_callback(self, data):
+        map, shape = data.data[:-2], data.data[-2:]
+        self.map_shape = [shape[0], shape[1]]
+        self.map = np.asarray(map).reshape(shape[0], shape[1])
+        self.occp_map = SemanticMapRenderer(self.map)
+        print("Saving mesh to file: map3D.ply")
+        o3d.io.write_triangle_mesh("map111.ply", self.occp_map.build)
+        self.vis.add_geometry(self.occp_map.build)
+
+
     def callback(self, depth, odom):
         pose = (odom.pose.pose)
+        self.grid_label_count = np.zeros((*self.map.shape, cfg.NUM_CLASS), dtype=int)
         transform_matrix = self.pose_to_matrix(pose)
         pcd_in_cam = self.get_point_cloud(depth)
         pcd_in_glb = self.transform_to_global(pcd_in_cam, transform_matrix)
         self.grid_label_count += self.count_labels(self.grid_label_count, pcd_in_glb)
         class_map = self.convert_to_semantic_map(self.grid_label_count) 
         smnt_map = SemanticMapRenderer(class_map)
-        self.accumulated_map.extend(smnt_map.build)
+        self.accumulated_map = smnt_map.build
         self.visualize_map(smnt_map, pcd_in_glb)
         self.frame_index += 1
         print(self.frame_index)
@@ -78,12 +92,14 @@ class CreateMap(Node):
 
     def count_labels(self, map, pcd):
         points = (np.asarray(pcd.points) - cfg.GRID_ORIGIN) / cfg.GRID_RESOLUTION
-        points[:, 1] *= -1
+        GRID_ORIGIN = np.array([-9.77, -4.86, 0])
+        points[:, 1] *= 1
         points = points.astype(int)
+        print("=======shape : ", self.map_shape)
         # TODO
         # map[points[:,1], points[:,0]] += 1
         for point in points:
-            if point[1] < 116 and point[0] < 171:
+            if point[1] < self.map_shape[1] and point[0] < self.map_shape[0]:
                 map[point[1]][point[0]] += 1
         return map
 
@@ -108,8 +124,9 @@ class CreateMap(Node):
         # o3d.visualization.draw_geometries([pcd_in_glb])
         self.vis.add_geometry(frame)
         self.vis.add_geometry(pcd_in_glb)
-        for i in semantic_map.build:
-            self.vis.add_geometry(i)
+        self.vis.add_geometry(semantic_map.build)
+        # for i in semantic_map.build:
+        #     self.vis.add_geometry(i)
         self.vis.run()
         # for i in semantic_map.build:
         #     self.vis.remove_geometry(i)
@@ -124,8 +141,8 @@ class CreateMap(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    base_map_path = "/home/ri/bagfiles/test_lab/third/converted3.txt"
-    node = CreateMap(base_map_path)
+    base_map_path = "/home/ri/bagfiles/datasets/cheonan/221026/map/first_date-second.pgm"
+    node = CreateMap()
     rclpy.spin(node)
 
 
