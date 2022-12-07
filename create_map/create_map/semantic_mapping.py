@@ -15,14 +15,13 @@ import open3d as o3d
 import config as cfg
 
 
-class CreateMap(Node):
+class Mao3DBuilder(Node):
     def __init__(self):      
         super().__init__("semantic_map")
         self.bridge = CvBridge()
         self.map, self.map_shape = np.zeros((1, 1)), 0
         qos_profile = QoSProfile(depth=10)
         self.map_sub = self.create_subscription(Int16MultiArray, "grid_map", self.map_callback, qos_profile)
-        self.map_sub
         self.occp_map = 0
         self.grid_label_count = 0
         self.vis = o3d.visualization.Visualizer()
@@ -48,7 +47,7 @@ class CreateMap(Node):
         self.occp_map = SemanticMapRenderer(self.map)
         print("Saving mesh to file: map3D.ply")
         o3d.io.write_triangle_mesh("map111.ply", self.occp_map.build)
-        self.vis.add_geometry(self.occp_map.build)
+        # self.vis.add_geometry(self.occp_map.build)
 
 
     def callback(self, depth, odom):
@@ -63,7 +62,7 @@ class CreateMap(Node):
         self.accumulated_map = smnt_map.build
         self.visualize_map(smnt_map, pcd_in_glb)
         self.frame_index += 1
-        print(self.frame_index)
+        print(self.frame_index) 
 
     def pose_to_matrix(self, pose):
         matrix = np.identity(4)
@@ -92,10 +91,8 @@ class CreateMap(Node):
 
     def count_labels(self, map, pcd):
         points = (np.asarray(pcd.points) - cfg.GRID_ORIGIN) / cfg.GRID_RESOLUTION
-        GRID_ORIGIN = np.array([-9.77, -4.86, 0])
         points[:, 1] *= 1
         points = points.astype(int)
-        print("=======shape : ", self.map_shape)
         # TODO
         # map[points[:,1], points[:,0]] += 1
         for point in points:
@@ -141,8 +138,7 @@ class CreateMap(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-    base_map_path = "/home/ri/bagfiles/datasets/cheonan/221026/map/first_date-second.pgm"
-    node = CreateMap()
+    node = Mao3DBuilder()
     rclpy.spin(node)
 
 

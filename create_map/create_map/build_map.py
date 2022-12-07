@@ -5,15 +5,16 @@ import config as cfg
 
 
 class MapRenderer:
-    def __init__(self, map, ctgr_heights):
+    def __init__(self, map, ctgr=cfg.CTGR, ctgr_heights=cfg.CTGR_HEIGHT, ctgr_colors=cfg.CTGR_COLOR):
         self.USE_OBSTACLE = True
         self.SEMANTIC = True
-        self.categories = ["nothing", "floor", "wall", "door", "obstacle", "window"]
+        # self.categories = ["nothing", "floor", "wall", "door", "obstacle", "window"]
+        self.categories = ctgr
         self.ctgr_heights = ctgr_heights
         self.default_height = 0
         # TODO
         # self.ctgr_colors = [[0, 0, 0], [1, 1, 1], [0.6, 0.6, 0.6], [0.6, 0.4, 0], [1, 1, 0], [0.058, 0.878, 1]]
-        self.ctgr_colors = [[0, 0, 0], [1, 1, 1], [0, 0, 0], [0.6, 0.4, 0], [0.6, 0.6, 0.6], [0.058, 0.878, 1]]
+        self.ctgr_colors = ctgr_colors
         self.map = map
         v, t = self.create_mesh_data(self.map)
         self.vert_packs = v
@@ -162,8 +163,8 @@ class MapRenderer:
 class OccupancyMapRenderer(MapRenderer):
     def __init__(self, filename):        
         map = self.read_map(filename)
-        ctgr_heights = [0, 0.1, 0.1, 0.6, 3, 6]
-        super().__init__(map, ctgr_heights)
+        ctgr_heights = [0, 0.1, 0.1, 0.6, 1, 3, 1]
+        super().__init__(map, ctgr_heights=ctgr_heights)
         self.default_height = -0.1
 
 
@@ -182,10 +183,19 @@ class OccupancyMapRenderer(MapRenderer):
 
 class SemanticMapRenderer(MapRenderer):
     def __init__(self, map):
-        ctgr_heights = [0, 0.1, 5, 0.6, 1, 6]
+        ctgr_heights = [0.5, 0.1, 3, 0.6, 1, 2, 1]
         super().__init__(map, ctgr_heights)
 
         self.default_height = 0
+
+class GridMapRenderer(MapRenderer):
+    def __init__(self, map):
+        ctgr = ["None", "Floor", "Wall"]
+        ctgr_height = [0, 0.1, 0.1]
+        ctgr_color = [[0.7, 0.7, 0.7], [1, 1, 1], [0, 0, 0]]
+        super().__init__(map, ctgr, ctgr_height, ctgr_color)
+        self.default_height = 0
+
 
 
 
