@@ -10,7 +10,7 @@ from create_map.build_map import SemanticMapRenderer
 class DepthToMap():
     def __init__(self, map, odom, points_opt, segmap):
         # TODO : intrinsic -> rgb camera
-        self.intrinsic = o3d.camera.PinholeCameraIntrinsic(848, 480, 418.874, 418.874, 427.171, 239.457)  #sch_robot
+        self.intrinsic = o3d.camera.PinholeCameraIntrinsic(480, 640, 713.52, 715.21, 224.48, 340.72)  #sch_robot
         self.ir_to_rgb = cfg.IR2RGB
         self.grid_map = map
         self.grid_label_count = np.zeros((map.shape[0], map.shape[1], 12), dtype=int)
@@ -25,7 +25,7 @@ class DepthToMap():
 
         points_rbt = self.transform_point_cloud(points_opt, cfg.IR_TO_ROBOT)
         points_glb = self.transform_point_cloud(points_rbt, base_to_glb)
-        points_glb = self.transform_point_cloud(points_glb, default_matrix)
+        # points_glb = self.transform_point_cloud(points_glb, default_matrix)
         self.grid_label_count += self.count_label(self.grid_label_count, points_glb, label)
         print("points in global:\n", points_glb[:-1:max(points_glb.shape[0]//20,1)])
         print("valid label:", np.sum(label >= 0))
@@ -83,7 +83,9 @@ class DepthToMap():
     def count_label(self, label_count_map, points, label):
         grid_yx = np.stack([-points[:, 1] + cfg.GRID_ORIGIN[1], points[:, 0] - cfg.GRID_ORIGIN[0]], axis=1) / cfg.GRID_RESOLUTION
         grid_yx = grid_yx.astype(int)
-        valid_mask = np.array([grid_yx[:, 1] < label_count_map.shape[1], 
+        valid_mask = np.array([grid_yx[:, 1] > 0,
+                               grid_yx[:, 0] > 0,
+                               grid_yx[:, 1] < label_count_map.shape[1], 
                                grid_yx[:, 0] < label_count_map.shape[0], 
                                label >= 0], dtype=int).all(axis=0)    # TODO self.grid_map - and
         grid_yx = grid_yx[valid_mask]

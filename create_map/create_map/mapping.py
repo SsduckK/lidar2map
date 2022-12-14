@@ -28,7 +28,7 @@ class MultiMsgSub(Node):
         self.label_map = None
         self.callback_count = 0
         self.use_depth = True
-        self.use_lidar = False
+        self.use_lidar = True
         map2d = self.create_subscription(Image, "grid_map", self.map_callback, 10)
         odom_msg = self.create_subscription(Odometry, "/new_odom", self.odom_callback, 10)
         segmap_msg = self.create_subscription(Image, "/inference_segmap", self.segmap_callback, 10)
@@ -107,16 +107,22 @@ class MultiMsgSub(Node):
         self.show_class_color_map(grid_map, class_map)
         self.callback_count += 1
         print("callback count:", self.callback_count)
-        if self.callback_count == 920:
+        if self.callback_count == 900:
             self.finalize(class_map)
     
     def lidar_to_point_cloud(self, ranges):
         idx = np.arange(360)
-        transpose_points = np.transpose(np.stack([-np.sin(np.deg2rad(idx)) * ranges, 
+        ranges = np.array(ranges)
+        points = np.transpose(np.stack([-np.sin(np.deg2rad(idx)) * ranges, 
                                                   np.full((360), 0.1), 
                                                   np.cos(np.deg2rad(idx)) * ranges + 0.02, 
                                                   np.full((360), 1)]))
-        return transpose_points
+        points = points[np.all(np.stack([0.1 < ranges, ranges < 3.], axis=1), axis=1)]
+        print("points in lidar1:\n", points.shape, "\n", points[:-1:max(points.shape[0]//20, 1)])
+        X, Z = points[:, 0], points[:, 2]
+        points = points[np.all(np.stack([-1. < X, X < 1, Z > 0.], axis=1), axis=1), :]
+        print("points in lidar2:\n", points[:-1:max(points.shape[0]//20, 1)])
+        return points
 
     def depth_to_point_cloud(self, depth):
         depth_image = o3d.geometry.Image((depth).astype(np.uint16))
