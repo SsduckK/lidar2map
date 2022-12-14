@@ -118,10 +118,8 @@ class MultiMsgSub(Node):
                                                   np.cos(np.deg2rad(idx)) * ranges + 0.02, 
                                                   np.full((360), 1)]))
         points = points[np.all(np.stack([0.1 < ranges, ranges < 3.], axis=1), axis=1)]
-        print("points in lidar1:\n", points.shape, "\n", points[:-1:max(points.shape[0]//20, 1)])
         X, Z = points[:, 0], points[:, 2]
         points = points[np.all(np.stack([-1. < X, X < 1, Z > 0.], axis=1), axis=1), :]
-        print("points in lidar2:\n", points[:-1:max(points.shape[0]//20, 1)])
         return points
 
     def depth_to_point_cloud(self, depth):
@@ -129,7 +127,6 @@ class MultiMsgSub(Node):
         print("depth shape", depth.shape)
         pcd = o3d.geometry.PointCloud.create_from_depth_image(depth_image, o3d.camera.PinholeCameraIntrinsic(*cfg.SCH_INSTRINSIC))
         pcd_cam = np.asarray(pcd.points)
-        print("points in cam1:\n", pcd_cam[:-1:max(pcd_cam.shape[0]//20,1)])
         pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,2] < 2)[0])
         pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,0] < 0.4)[0])
         pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,0] > -0.4)[0])
@@ -139,7 +136,6 @@ class MultiMsgSub(Node):
         row = pcd_cam.shape[0]
         if row == 0:
             return None
-        print("points in cam2:\n", pcd_cam[:-1:max(pcd_cam.shape[0]//20, 1)])
         pcd_cam = np.concatenate([pcd_cam, np.ones((row, 1))], axis=1)
         return pcd_cam
     

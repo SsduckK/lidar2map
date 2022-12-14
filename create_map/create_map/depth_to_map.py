@@ -10,7 +10,7 @@ from create_map.build_map import SemanticMapRenderer
 class DepthToMap():
     def __init__(self, map, odom, points_opt, segmap):
         # TODO : intrinsic -> rgb camera
-        self.intrinsic = o3d.camera.PinholeCameraIntrinsic(480, 640, 713.52, 715.21, 224.48, 340.72)  #sch_robot
+        self.rgb_intrinsic = o3d.camera.PinholeCameraIntrinsic(480, 640, 713.52, 715.21, 224.48, 340.72)  #sch_robot
         self.ir_to_rgb = cfg.IR2RGB
         self.grid_map = map
         self.grid_label_count = np.zeros((map.shape[0], map.shape[1], 12), dtype=int)
@@ -27,7 +27,6 @@ class DepthToMap():
         points_glb = self.transform_point_cloud(points_rbt, base_to_glb)
         # points_glb = self.transform_point_cloud(points_glb, default_matrix)
         self.grid_label_count += self.count_label(self.grid_label_count, points_glb, label)
-        print("points in global:\n", points_glb[:-1:max(points_glb.shape[0]//20,1)])
         print("valid label:", np.sum(label >= 0))
         return self.grid_label_count, points_glb
 
@@ -64,20 +63,15 @@ class DepthToMap():
 
     def align_segmap_to_pcd(self, class_map, points_ir):
         height, width = class_map.shape
-        print("class map shape", class_map.shape)
         points_rgb = np.transpose(self.ir_to_rgb@np.transpose(points_ir))
-        fx, fy = self.intrinsic.get_focal_length()
-        cx, cy = self.intrinsic.get_principal_point()
+        fx, fy = self.rgb_intrinsic.get_focal_length()
+        cx, cy = self.rgb_intrinsic.get_principal_point()
         X, Y, Z = points_rgb[..., 0], points_rgb[..., 1], points_rgb[..., 2]
         pixel = np.stack([fy * Y / Z + cy, fx * X / Z + cx], axis=1).astype(int)
         outside_img = np.array([pixel[:, 0] < 0, pixel[:, 0] >= height, pixel[:, 1] < 0, pixel[:, 1] >= width]).any(axis=0)
         pixel = np.clip(pixel, [0, 0], [height - 1, width - 1])
         pcd_label = class_map[pixel[..., 0], pixel[..., 1]]
         pcd_label[outside_img] = -1
-        rows = max(points_ir.shape[0],20)
-        print("points in ir:\n", points_ir[:-1:rows//20])
-        print("points in rgb:\n", points_rgb[:-1:rows//20])
-        print("pixel:\n", pixel[:-1:rows//20])
         return pcd_label
 
     def count_label(self, label_count_map, points, label):

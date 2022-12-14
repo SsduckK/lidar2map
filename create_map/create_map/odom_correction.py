@@ -40,13 +40,12 @@ class OdomCorrector(Node):
 
     def odom_callback(self, odom):
         time = Time.from_msg(odom.header.stamp).to_msg()
-        odom_pose_x, odom_pose_y, odom_pose_z = odom.pose.pose.position.x, odom.pose.pose.position.y, odom.pose.pose.position.z
-        odom_ori_w, odom_ori_x, odom_ori_y, odom_ori_z = odom.pose.pose.orientation.w, odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, odom.pose.pose.orientation.z
+        odom_pose = [odom.pose.pose.position.x, odom.pose.pose.position.y, odom.pose.pose.position.z]
+        odom_quaternion = [odom.pose.pose.orientation.w, odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, odom.pose.pose.orientation.z]
         odom_matrix = np.identity(4)
-        odom_quaternion = odom_ori_w, odom_ori_x, odom_ori_y, odom_ori_z
         assert np.isclose(np.linalg.norm(odom_quaternion), 1, 0.0001), f"[pose_to_matrix] quaterion norm={np.linalg.norm(odom_quaternion)}"
         odom_matrix[:3, :3] = o3d.geometry.get_rotation_matrix_from_quaternion(odom_quaternion)
-        odom_matrix[:3, 3] = np.array([odom_pose_x, odom_pose_y, odom_pose_z])
+        odom_matrix[:3, 3] = np.array(odom_pose)
         new_matrix = self.footprint@odom_matrix
         self.pub_new_odom(time, new_matrix, odom_matrix)
 
@@ -66,9 +65,9 @@ class OdomCorrector(Node):
         quat_dist1 = np.linalg.norm(np.array([quatertnion[2] - self.prv_pose[2], quatertnion[3] - self.prv_pose[3]]))
         quat_dist2 = np.linalg.norm(np.array([quatertnion[2] + self.prv_pose[2], quatertnion[3] + self.prv_pose[3]]))
         quat_dist = min(quat_dist1, quat_dist2)
-        # print(f"dist: {dist:1.4f}, {quat_dist:1.4f}, trans: {translation[0]:1.4f}, {translation[1]:1.4f}, quat: {quatertnion[3]:1.4f}, {quatertnion[2]:1.4f}" \
-        #     f", odom: {odom_matrix[0,3]:1.4f}, {odom_matrix[1,3]:1.4f}"
-        # )
+        print(f"dist: {dist:1.4f}, {quat_dist:1.4f}, trans: {translation[0]:1.4f}, {translation[1]:1.4f}, quat: {quatertnion[3]:1.4f}, {quatertnion[2]:1.4f}" \
+              f", odom: {odom_matrix[0,3]:1.4f}, {odom_matrix[1,3]:1.4f}"
+        )
         # print(f"diff : {quatertnion[2] - self.prv_pose[3]}")
         if (quat_dist > 0.2 or dist > 0.5) and self.outlier_cnt <= 2:
             print("outlier!")

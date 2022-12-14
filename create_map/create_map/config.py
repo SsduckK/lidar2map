@@ -1,13 +1,6 @@
 import numpy as np
 
 RESULT_PATH = "/home/ri/colcon_ws/src/lidar2map/data"
-CTGR = ["None", "Wall", "Obstacle", "Floor", "Windowsill", "Ceiling", "Person", "Door", "Furniture", "Electronics", "Furniture_wall", "Window"]
-CTGR_HEIGHT = [1, 1, 0.7, 0.7, 1.5, 1.5, 2, 2, 1, 2, 1.5, 1.5, 1]
-# CTGR_HEIGHT = [2, 2, 2, 4, 4, 4, 1]
-CTGR_COLOR = [[0, 0, 0], [0.8, 0.8, 0.7], [0.2, 0.2, 0.2],
-              [0, 0.5, 0.5], [0, 0.4, 0.8], [0.6, 0.6, 0.6],
-              [0.058, 0.878, 1], [0.4, 0.9, 0.8], [0.4, 0.3, 0],
-              [0, 1, 1], [0.3, 0.5, 0.5], [0, 0.8, 0.8]]
 
 NUM_CLASS = 1
 MAX_DEPTH = 3.5
@@ -100,3 +93,8 @@ SEGLABELCOLOR = [{
     "trainId": 10
     }
 ]
+
+CTGR = ["None"] + [label["name"] for label in SEGLABELCOLOR]
+CTGR_COLOR = [[0, 0, 0]] + [label["color"] for label in SEGLABELCOLOR]
+CTGR_HEIGHT = [1, 1, 0.7, 0.7, 1.5, 1.5, 2, 2, 1, 2, 1.5, 1.5, 1]
+
