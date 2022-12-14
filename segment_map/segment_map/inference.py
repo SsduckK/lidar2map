@@ -10,7 +10,8 @@ from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
 
-from .loadModel import loadmodel
+import config as cfg
+from loadModel import loadmodel
 
 
 def lb_mapping(lb, lb_map):
@@ -30,7 +31,7 @@ def lb_mapping(lb, lb_map):
 
 def inference(net,image):
 
-    with open('/home/ri/colcon_ws/src/lidar2map/create_map/create_map/inference/LGE_info.json', 'r') as fr:
+    with open(cfg.LABEL_INFO, 'r') as fr:
         labels_info = json.load(fr)
     lb_map = {el['trainId']: el['color'] for el in labels_info}
     to_tensor = transforms.Compose([
@@ -69,7 +70,7 @@ def show_segmap(image):
     print('load network\n')
     device = "cuda" if torch.cuda.is_available() else "cpu"
     net = loadmodel(n_classes)
-    net.load_state_dict(torch.load('/home/ri/colcon_ws/src/lidar2map/create_map/create_map/inference/SwiftNet_1212.pth',map_location=device),strict=False)
+    net.load_state_dict(torch.load(cfg.WEIGHT,map_location=device),strict=False)
     # net.cuda()
     net.eval()
 

@@ -1,7 +1,7 @@
 
 
-from .model.swiftnet.models.semseg import SemsegModel
-from .model.swiftnet.models.resnet.resnet_single_scale import resnet18
+from model.swiftnet.models.semseg import SemsegModel
+from model.swiftnet.models.resnet.resnet_single_scale import resnet18
 
 def loadmodel(n_classes):
     

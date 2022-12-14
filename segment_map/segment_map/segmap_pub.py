@@ -1,8 +1,9 @@
+import os
+import sys
 import rclpy
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-
 from PIL import Image as PImage
 from rclpy.node import Node
 from rclpy.qos import QoSProfile
@@ -10,8 +11,15 @@ from cv_bridge import CvBridge
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from std_msgs.msg import Header
-from inference import inference
 from rclpy.time import Time
+
+# add current dir to python path
+cur_path = os.path.dirname(os.path.abspath(__file__))
+if cur_path not in sys.path:
+    sys.path.append(cur_path)
+
+import inference
+
 
 class SegMapPub(Node):
     def __init__(self):

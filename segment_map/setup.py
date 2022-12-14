@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'create_map'
+package_name = 'segment_map'
 
 setup(
     name=package_name,
@@ -14,15 +14,13 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='ri',
-    maintainer_email='ri@todo.todo',
+    maintainer_email='dlwhdrlf0619@naver.com',
     description='TODO: Package description',
     license='TODO: License declaration',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-        f'map_pub = {package_name}.map_publisher:main',
-        f'mapping = {package_name}.mapping:main',
-        f'new_odom = {package_name}.odom_correction:main'
+        f"segmap_pub = {package_name}.segmap_pub:main"
         ],
     },
 )

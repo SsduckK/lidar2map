@@ -1,10 +1,10 @@
 import numpy as np
-import config as cfg
 import open3d as o3d
 import copy
 import cv2
 
-from build_map import SemanticMapRenderer
+import create_map.config as cfg
+from create_map.build_map import SemanticMapRenderer
 
 class DepthToMap():
     def __init__(self, map, odom, lidar, segmap):

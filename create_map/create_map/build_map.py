@@ -1,7 +1,8 @@
 import numpy as np
 import open3d as o3d
 import cv2
-import config as cfg
+
+import create_map.config as cfg
 
 
 class MapRenderer:
