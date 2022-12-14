@@ -6,48 +6,30 @@ import cv2
 import create_map.config as cfg
 from create_map.build_map import SemanticMapRenderer
 
+
 class DepthToMap():
-    def __init__(self, map, odom, lidar, segmap):
-        # TODO : intrinsic -> cfg
+    def __init__(self, map, odom, points_opt, segmap):
+        # TODO : intrinsic -> rgb camera
         self.intrinsic = o3d.camera.PinholeCameraIntrinsic(848, 480, 418.874, 418.874, 427.171, 239.457)  #sch_robot
-        # self.intrinsic = o3d.camera.PinholeCameraIntrinsic(424, 240, 213.0231, 213.0231, 213.6875, 116.998) #LGE_robot
         self.ir_to_rgb = cfg.IR2RGB
-        self.cam_to_base = cfg.CAM_TO_BASE
         self.grid_map = map
         self.grid_label_count = np.zeros((map.shape[0], map.shape[1], 12), dtype=int)
         self.accumulated_map = []
-        self.grid_label_count, self.point_cloud = self.mapping(odom, lidar, segmap)
+        self.grid_label_count, self.points_glb = self.mapping(odom, points_opt, segmap)
 
-    def mapping(self, pose, lidar, segmap):
+    def mapping(self, pose, points_opt, segmap):
         default_matrix = self.default_tf_matrix()
         base_to_glb = self.pose_to_matrix(pose)
-        lidar_point = self.calculate_lidar(lidar)
-        # print("pose", pose.position, pose.orientation)
-        # print("transform", base_to_glb)
-        # pcd_ir = self.get_point_cloud(depth)
         class_map = self.convert_classmap(segmap)
-        pcd_label = self.align_segmap_to_pcd(class_map, lidar_point)
-        pcd_glb = self.transform_to_global(lidar_point, base_to_glb)
-        pcd_glb = self.default_transform(pcd_glb, default_matrix)
-        self.grid_label_count += self.count_label(self.grid_label_count, pcd_glb, pcd_label)
-        # print("points in sensor", np.asarray(pcd_ir.points)[:-1:3000])
-        # print("points in global", np.asarray(pcd_glb.points)[:-1:3000])
-        return self.grid_label_count, base_to_glb
-        
-    def calculate_lidar(self, lidar):
-        idx = np.arange(360)
-        transpose_points = np.transpose(np.stack([np.cos(np.deg2rad(idx)) * lidar, np.sin(np.deg2rad(idx)) * lidar, np.full((360), 0.1), np.full((360), 1)]))
-        return transpose_points
+        label = self.align_segmap_to_pcd(class_map, points_opt)
 
-    def get_point_cloud(self, depth):
-        depth_image = o3d.geometry.Image((depth).astype(np.uint16))
-        pcd = o3d.geometry.PointCloud.create_from_depth_image(depth_image, self.intrinsic)
-        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,2] < 2)[0])
-        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,0] < 0.4)[0])
-        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,0] > -0.4)[0])
-        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,1] < 0.1)[0])
-        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,1] > -0.9)[0])
-        return pcd
+        points_rbt = self.transform_point_cloud(points_opt, cfg.IR_TO_ROBOT)
+        points_glb = self.transform_point_cloud(points_rbt, base_to_glb)
+        points_glb = self.transform_point_cloud(points_glb, default_matrix)
+        self.grid_label_count += self.count_label(self.grid_label_count, points_glb, label)
+        print("points in global:\n", points_glb[:-1:max(points_glb.shape[0]//20,1)])
+        print("valid label:", np.sum(label >= 0))
+        return self.grid_label_count, points_glb
 
     def convert_classmap(self, segmap):
         lb_map = {el['trainId']: [int(color*255) for color in el['color']] for el in cfg.SEGLABELCOLOR}
@@ -68,11 +50,9 @@ class DepthToMap():
         matrix = np.linalg.inv(matrix)
         return matrix
 
-    def default_transform(self, pcd, matrix):
-        pcd_in_origin = np.transpose(matrix@np.transpose(pcd))
-        # pcd_in_origin = copy.deepcopy(pcd)
-        # pcd_in_origin.transform(matrix)
-        return pcd_in_origin
+    def transform_point_cloud(self, points, matrix):
+        points_tfm = np.transpose(matrix@np.transpose(points))
+        return points_tfm
 
     def pose_to_matrix(self, pose):
         matrix = np.identity(4)
@@ -82,33 +62,25 @@ class DepthToMap():
         matrix[:3, 3] = np.array([pose.position.x, pose.position.y, pose.position.z])
         return matrix
 
-    def transform_to_global(self, pcd_in_cam, base_to_glb):
-        pcd_in_rbt = np.transpose(self.cam_to_base@np.transpose(pcd_in_cam))
-        pcd_in_glb = np.transpose(base_to_glb@np.transpose(pcd_in_rbt))
-        # pcd_in_rbt = copy.deepcopy(pcd_in_cam)
-        # pcd_in_rbt.transform(self.cam_to_base)
-        # pcd_in_glb = copy.deepcopy(pcd_in_rbt)
-        # pcd_in_glb.transform(base_to_glb)
-        return pcd_in_glb
-
-    def align_segmap_to_pcd(self, class_map, pcd_ir):
+    def align_segmap_to_pcd(self, class_map, points_ir):
         height, width = class_map.shape
-        # pcd_rgb = copy.deepcopy(pcd_ir)
-        # pcd_rgb.transform(self.ir_to_rgb)
-        # points = np.asarray(pcd_rgb.points) 
-        lid2rgb = np.transpose(self.ir_to_rgb@np.transpose(pcd_ir))
+        print("class map shape", class_map.shape)
+        points_rgb = np.transpose(self.ir_to_rgb@np.transpose(points_ir))
         fx, fy = self.intrinsic.get_focal_length()
         cx, cy = self.intrinsic.get_principal_point()
-        X, Y, Z = lid2rgb[..., 0], lid2rgb[..., 1], lid2rgb[..., 2]
+        X, Y, Z = points_rgb[..., 0], points_rgb[..., 1], points_rgb[..., 2]
         pixel = np.stack([fy * Y / Z + cy, fx * X / Z + cx], axis=1).astype(int)
         outside_img = np.array([pixel[:, 0] < 0, pixel[:, 0] >= height, pixel[:, 1] < 0, pixel[:, 1] >= width]).any(axis=0)
         pixel = np.clip(pixel, [0, 0], [height - 1, width - 1])
         pcd_label = class_map[pixel[..., 0], pixel[..., 1]]
         pcd_label[outside_img] = -1
+        rows = max(points_ir.shape[0],20)
+        print("points in ir:\n", points_ir[:-1:rows//20])
+        print("points in rgb:\n", points_rgb[:-1:rows//20])
+        print("pixel:\n", pixel[:-1:rows//20])
         return pcd_label
 
-    def count_label(self, label_count_map, pcd, label):
-        points = pcd
+    def count_label(self, label_count_map, points, label):
         grid_yx = np.stack([-points[:, 1] + cfg.GRID_ORIGIN[1], points[:, 0] - cfg.GRID_ORIGIN[0]], axis=1) / cfg.GRID_RESOLUTION
         grid_yx = grid_yx.astype(int)
         valid_mask = np.array([grid_yx[:, 1] < label_count_map.shape[1], 

@@ -28,7 +28,7 @@ class Mao3DBuilder(Node):
         self.frame_index = 0
         self.accumulated_map = []
         self.intrinsic = o3d.camera.PinholeCameraIntrinsic(848, 480, 418.874, 418.874, 427.171, 239.457)
-        self.cam_to_base = cfg.CAM_TO_BASE
+        self.IR_TO_ROBOT = cfg.IR_TO_ROBOT
 
         depth = message_filters.Subscriber(self, Image, "/camera/depth/image_rect_raw")
         odom = message_filters.Subscriber(self, Odometry, "/odom")
@@ -84,7 +84,7 @@ class Mao3DBuilder(Node):
 
     def transform_to_global(self, pcd_in_cam, transform_matrix):
         pcd_in_rbt = copy.deepcopy(pcd_in_cam)
-        pcd_in_rbt.transform(self.cam_to_base)
+        pcd_in_rbt.transform(self.IR_TO_ROBOT)
         pcd_in_glb = copy.deepcopy(pcd_in_rbt)
         pcd_in_glb.transform(transform_matrix)
         return pcd_in_glb

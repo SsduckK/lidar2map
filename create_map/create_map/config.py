@@ -1,5 +1,6 @@
 import numpy as np
 
+RESULT_PATH = "/home/ri/colcon_ws/src/lidar2map/data"
 CTGR = ["None", "Wall", "Obstacle", "Floor", "Windowsill", "Ceiling", "Person", "Door", "Furniture", "Electronics", "Furniture_wall", "Window"]
 CTGR_HEIGHT = [1, 1, 0.7, 0.7, 1.5, 1.5, 2, 2, 1, 2, 1.5, 1.5, 1]
 # CTGR_HEIGHT = [2, 2, 2, 4, 4, 4, 1]
@@ -11,7 +12,7 @@ CTGR_COLOR = [[0, 0, 0], [0.8, 0.8, 0.7], [0.2, 0.2, 0.2],
 NUM_CLASS = 1
 MAX_DEPTH = 3.5
 LOWER_HEIGHT = 0.2
-CAM_TO_BASE = np.array([[ 0, 0, 1, 0],
+IR_TO_ROBOT = np.array([[ 0, 0, 1, 0],
                         [-1, 0, 0, 0],
                         [ 0,-1, 0, 0.2],
                         [0, 0, 0, 1]])
@@ -21,9 +22,9 @@ IR2RGB = np.array([[0.9986, 0.0349, 0.0401, -0.067],
                    [-0.0354, -0.1241, 0.9916, -0.080],
                    [0, 0, 0, 1]])
 
-SCH_INSTRINSIC = np.array([848, 480, 418.874, 418.874, 427.171, 239.457])
+SCH_INSTRINSIC = [848, 480, 418.874, 418.874, 427.171, 239.457]
 
-LGE_INSTRINSIC = np.array([424, 240, 213.0231, 213.0231, 213.6875, 116.998])
+LGE_INSTRINSIC = [424, 240, 213.0231, 213.0231, 213.6875, 116.998]
 
 GRID_RESOLUTION = 0.05
 GRID_ORIGIN = np.array([-9.57, 9.1, 0])
