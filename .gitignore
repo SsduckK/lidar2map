@@ -1,2 +1,8 @@
 *.pyc
 .vscode/
+*.zip
+*.png
+*.ply
+__pycache__
+.idea
+data

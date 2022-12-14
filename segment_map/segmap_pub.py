@@ -19,7 +19,7 @@ class SegMapPub(Node):
         self.image = Image()
         self.subscriptions_ = self.create_subscription(Image, "/frames", self.listener_callback, 10)
         self.publishers_ = self.create_publisher(Image, "/inference_segmap", 1)
-        self.num_ctgr = 7       # TODO: ros parameter register
+        self.num_ctgr = 11       # TODO: ros parameter register
         # self.cap = cv2.VideoCapture(0)
         self.br = CvBridge()
 

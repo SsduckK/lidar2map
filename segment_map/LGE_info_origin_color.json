@@ -1,0 +1,72 @@
+[
+{
+    "name": "Wall",
+    "id": 1,
+    "color": [
+    0.466666666666667,
+    0.6745,
+    0.188235
+    ],
+    "trainId": 0
+},
+{
+    "name": "Obstacle",
+    "id": 2,
+    "color": [
+        0.85,
+        0.325,
+        0.098
+    ],
+    "trainId": 1
+    },
+    {
+    "name": "Floor",
+    "id": 3,
+    "color": [
+        0,
+        0.44705,
+        0.7411
+    ],
+    "trainId": 2
+    },
+    {
+    "name": "Window",
+    "id": 4,
+    "color": [
+        0.63529,
+        0.07843,
+        0.18431
+    ],
+    "trainId": 3
+    },
+    {
+    "name": "Ceiling",
+    "id": 5,
+    "color": [
+        0.45882,
+        0.00784,
+        0.45882
+    ],
+    "trainId": 4
+    },
+    {
+    "name": "Person",
+    "id": 6,
+    "color": [
+        0,
+        0.7607,
+        0.3529
+    ],
+    "trainId": 5
+    },
+    {
+    "name": "Door",
+    "id": 7 ,
+    "color": [
+        1,
+        0,
+        0
+    ],
+    "trainId": 6
+    }
+]

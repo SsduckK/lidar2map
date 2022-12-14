@@ -12,8 +12,6 @@ class MapRenderer:
         self.categories = ctgr
         self.ctgr_heights = ctgr_heights
         self.default_height = 0
-        # TODO
-        # self.ctgr_colors = [[0, 0, 0], [1, 1, 1], [0.6, 0.6, 0.6], [0.6, 0.4, 0], [1, 1, 0], [0.058, 0.878, 1]]
         self.ctgr_colors = ctgr_colors
         self.map = map
         v, t = self.create_mesh_data(self.map)
@@ -183,7 +181,7 @@ class OccupancyMapRenderer(MapRenderer):
 
 class SemanticMapRenderer(MapRenderer):
     def __init__(self, map):
-        ctgr_heights = [0.5, 0.1, 3, 0.6, 1, 2, 1]
+        ctgr_heights = [1, 0.7, 0.7, 1.5, 1.5, 2, 2, 1, 2, 1.5, 1.5, 1.5]
         super().__init__(map, ctgr_heights)
 
         self.default_height = 0

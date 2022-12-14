@@ -23,6 +23,7 @@ setup(
         f'build_map = {package_name}.build_map:main',
         f'create_map = {package_name}.semantic_mapping:main',
         f'map_pub = {package_name}.map_publisher:main',
+        f'segmap_pub = {package_name}.segmap_pub:mail',
         ],
     },
 )
