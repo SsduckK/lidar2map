@@ -50,9 +50,6 @@ class MultiMsgSub(Node):
         map = map[..., 0]
         self.grid_map = np.zeros_like(map, dtype=np.uint8)
         self.label_map = np.zeros((map.shape[0], map.shape[1], self.num_ctgr), dtype=int) if self.label_map is None else self.label_map
-        ctgr = [205, 254, 0]    # [cfg.GRID_TYPE_NONE, cfg.GRID_TYPE_FLOOR, cfg.GRID_TYPE_WALL]
-        for i, c in enumerate(ctgr):
-            self.grid_map[map == c] = i
     
     def update_data(self, name, nano_sec, data):
         self.sub_data_heap[name]["time"] = np.append(self.sub_data_heap[name]["time"], np.asarray(nano_sec))
@@ -158,9 +155,16 @@ class MultiMsgSub(Node):
         print("saved")
         o3d.io.write_triangle_mesh(os.path.join(cfg.RESULT_PATH, "map_pcl.ply"), grid_map + total_map)
 
+    def convert_to_semantic_map(self, grid_count, count_thresh):
+        class_map = np.argmax(grid_count, axis=2)
+        class_mask = np.max(grid_count, axis=2) > count_thresh
+        grid_map_mask = np.array([self.grid_map==cfg.GRID_MAP_VALUE["wall"]], dtype=int)
+        class_map = class_map * grid_map_mask[0]
+        return class_map
+
     def show_class_color_map(self, grid_map, class_map):
         print("grid_map", grid_map.shape, grid_map.dtype)
-        class_color_map = (255 - cv2.cvtColor(grid_map, cv2.COLOR_GRAY2RGB) * 100).astype(np.uint8)
+        class_color_map = cv2.cvtColor(grid_map, cv2.COLOR_GRAY2RGB)
         for i, color in enumerate(cfg.CTGR_COLOR):
             if i==0:
                 continue
@@ -169,11 +173,6 @@ class MultiMsgSub(Node):
         cv2.waitKey(10)
         return class_color_map
 
-    def convert_to_semantic_map(self, grid_count):
-        class_map = np.argmax(grid_count, axis=2)
-        grid_map_mask = np.array([self.grid_map==2], dtype=int)
-        class_map = class_map * grid_map_mask[0]
-        return class_map
 
 
 def main(args=None):

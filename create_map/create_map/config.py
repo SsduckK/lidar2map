@@ -98,3 +98,4 @@ CTGR = ["None"] + [label["name"] for label in SEGLABELCOLOR]
 CTGR_COLOR = [[0, 0, 0]] + [label["color"] for label in SEGLABELCOLOR]
 CTGR_HEIGHT = [1, 1, 0.7, 0.7, 1.5, 1.5, 2, 2, 1, 2, 1.5, 1.5, 1]
 
+GRID_MAP_VALUE = {"unknown": 205, "floor": 254, "wall": 0}

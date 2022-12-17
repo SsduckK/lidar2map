@@ -9,10 +9,9 @@ from create_map.build_map import SemanticMapRenderer
 
 class DepthToMap():
     def __init__(self, map, odom, points_opt, segmap):
-        # TODO : intrinsic -> rgb camera
+        # TODO : config
         self.rgb_intrinsic = o3d.camera.PinholeCameraIntrinsic(480, 640, 713.52, 715.21, 224.48, 340.72)  #sch_robot
         self.ir_to_rgb = cfg.IR2RGB
-        self.grid_map = map
         self.grid_label_count = np.zeros((map.shape[0], map.shape[1], 12), dtype=int)
         self.accumulated_map = []
         self.grid_label_count, self.points_glb = self.mapping(odom, points_opt, segmap)
@@ -81,7 +80,7 @@ class DepthToMap():
                                grid_yx[:, 0] > 0,
                                grid_yx[:, 1] < label_count_map.shape[1], 
                                grid_yx[:, 0] < label_count_map.shape[0], 
-                               label >= 0], dtype=int).all(axis=0)    # TODO self.grid_map - and
+                               label >= 0], dtype=int).all(axis=0)
         grid_yx = grid_yx[valid_mask]
         label = label[valid_mask]
         label_count_map[grid_yx[:,0],grid_yx[:,1],label] += 1
