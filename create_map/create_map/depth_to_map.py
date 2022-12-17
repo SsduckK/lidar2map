@@ -34,13 +34,6 @@ class DepthToMap():
         class_map = np.zeros(segmap.shape[:2], dtype=int)
         for id, c in color_id_map.items():
             class_map[(segmap==c).all(axis=2)] = id
-        
-        val, cnt = np.unique(class_map, return_counts=True)
-        print("class map cnt", val, cnt)
-        val, cnt = np.unique(segmap.reshape(-1, 3), return_counts=True, axis=0)
-        print("seg map cnt", val, cnt)
-        print("color_id_map", color_id_map)
-
         return class_map
 
     def default_tf_matrix(self):
@@ -93,6 +86,6 @@ class DepthToMap():
         yxl = np.concatenate([grid_yx, label[:, np.newaxis]], axis=1)
         yxl, counts = np.unique(yxl, return_counts=True, axis=0)
         label_count_map = np.zeros(self.map_shape, dtype=int)
-        label_count_map[yxl[:,0],yxl[:,1],yxl[:,2]] = counts
+        label_count_map[yxl[:,0],yxl[:,1],yxl[:,2]] = np.minimum(counts, 10)
         print("label count per class", np.sum(label_count_map, axis=(0,1)))
         return label_count_map

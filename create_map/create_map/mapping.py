@@ -17,7 +17,7 @@ from create_map.build_map import GridMapRenderer
 from create_map.depth_to_map import DepthToMap
 
 
-START_TIME_221216 = 0 # 1671186576547699200
+START_TIME_221216 = 1671186576547699200
 END_TIME_221216 = 1671186696404034560
 
 
@@ -26,8 +26,8 @@ class GridMapClassifier(Node):
         super().__init__('grid_map_classifier')
         self.map_, self.map_shape = np.zeros((1, 1)), 0
         self.sub_data_heap = {key: {"time": np.zeros(0), "data": []} for key in ["odom", "lidar", "depth"]}
-        # self.tolerance = 1e+8
-        self.tolerance = 5251135165601792.0
+        self.tolerance = 1e+8
+        # self.tolerance = 5251135165601792.0
         self.br = CvBridge()
         self.grid_map = None
         self.num_ctgr = 12       # TODO: read ros parameter
@@ -133,7 +133,6 @@ class GridMapClassifier(Node):
         class_mask = np.max(grid_count, axis=2) > self.count_thresh
         # grid_map_mask = np.array([self.grid_map==cfg.GRID_MAP_VALUE["wall"]], dtype=int)
         class_map = class_map * class_mask
-        print("valid grid count", np.sum(class_map > 0))
         return class_map
 
     def lidar_to_point_cloud(self, ranges):

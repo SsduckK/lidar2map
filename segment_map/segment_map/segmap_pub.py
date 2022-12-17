@@ -31,7 +31,7 @@ class SegMapPub(Node):
         self.num_ctgr = 11       # TODO: ros parameter register
         # self.cap = cv2.VideoCapture(0)
         self.br = CvBridge()
-        odom_msg = self.create_subscription(Odometry, "/new_odom", self.odom_callback, 10)
+        odom_msg = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
         self.odom_time = 0
 
     def listener_callback(self, data):
@@ -43,7 +43,6 @@ class SegMapPub(Node):
         self.odom_time = odom.header.stamp
 
     def publish_image_msg(self, c_frame):
-        now = self.get_clock().now()
         frame = cv2.rotate(c_frame, cv2.ROTATE_90_CLOCKWISE)
         inf_frame = inference.show_segmap(frame)
         inf_frame = np.asarray(inf_frame)
@@ -52,7 +51,7 @@ class SegMapPub(Node):
         self.image.encoding = "bgr8"
         self.image.step = 1920
         self.image = self.br.cv2_to_imgmsg(inf_frame)
-        self.image.header.stamp = now.to_msg()
+        self.image.header.stamp = self.odom_time
         self.publishers_.publish(self.image)
         
         self.get_logger().info('Publishing video frame')

@@ -22,6 +22,8 @@ class OdomPublisher(Node):
         super().__init__('odom_publisher')
         self.base_odom = Odometry()
         self.base_odom_publsiher = self.create_publisher(Odometry, "/new_odom", 1)
+        odom_msg = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
+        self.odom_time = 0
 
         # Declare and acquire `target_frame` parameter
         self.target_frame = self.declare_parameter(
@@ -32,6 +34,9 @@ class OdomPublisher(Node):
 
         # Call on_timer function every second
         self.timer = self.create_timer(0.2, self.on_timer)
+
+    def odom_callback(self, odom):
+        self.odom_time = odom.header.stamp
 
     def on_timer(self):
         # Store frame names in variables that will be used to
@@ -52,7 +57,7 @@ class OdomPublisher(Node):
             return
         print("trans\n\n\n\n")
         print(t)
-        self.base_odom.header.stamp = self.get_clock().now().to_msg()
+        self.base_odom.header.stamp = self.odom_time
         self.base_odom.pose.pose.position.x = t.transform.translation.x
         self.base_odom.pose.pose.position.y = t.transform.translation.y
         self.base_odom.pose.pose.position.z = t.transform.translation.z
