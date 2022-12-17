@@ -17,7 +17,7 @@ from create_map.build_map import GridMapRenderer
 from create_map.depth_to_map import DepthToMap
 
 
-START_TIME_221216 = 1671186576547699200
+START_TIME_221216 = 0 # 1671186576547699200
 END_TIME_221216 = 1671186696404034560
 
 
@@ -37,7 +37,7 @@ class GridMapClassifier(Node):
         self.use_lidar = False
         self.mapping_on = False
         self.latest_time = 0
-        self.count_thresh = 2
+        self.count_thresh = 0
         map2d = self.create_subscription(Image, "grid_map", self.map_callback, 10)
         odom_msg = self.create_subscription(Odometry, "/new_odom", self.odom_callback, 10)
         # odom_msg = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
@@ -106,6 +106,8 @@ class GridMapClassifier(Node):
         return sync_other, time_diff
 
     def update_map(self, grid_map, odom, depth, lidar, segmap):
+        cv2.imshow("seg_map", segmap)
+        cv2.waitKey(10)
         if lidar is not None:
             lidar_pts = self.lidar_to_point_cloud(lidar)
             lidar_map = DepthToMap(grid_map, odom, lidar_pts, segmap)
@@ -115,6 +117,7 @@ class GridMapClassifier(Node):
             if depth_pts is not None:
                 depth_map = DepthToMap(grid_map, odom, depth_pts, segmap)
                 self.label_map += depth_map.grid_label_count
+                print("grid count frame", np.sum(depth_map.grid_label_count))
             else:
                 print("no points from depth map!!")
         
@@ -125,10 +128,12 @@ class GridMapClassifier(Node):
         return class_color_map
 
     def convert_to_semantic_map(self, grid_count):
+        print("grid count accum", np.sum(grid_count))
         class_map = np.argmax(grid_count, axis=2)
         class_mask = np.max(grid_count, axis=2) > self.count_thresh
         # grid_map_mask = np.array([self.grid_map==cfg.GRID_MAP_VALUE["wall"]], dtype=int)
         class_map = class_map * class_mask
+        print("valid grid count", np.sum(class_map > 0))
         return class_map
 
     def lidar_to_point_cloud(self, ranges):
@@ -160,12 +165,11 @@ class GridMapClassifier(Node):
         return pcd_cam
 
     def show_class_color_map(self, grid_map, class_map):
-        print("grid_map", grid_map.shape, grid_map.dtype)
         class_color_map = cv2.cvtColor(grid_map, cv2.COLOR_GRAY2RGB)
         for i, color in enumerate(cfg.CTGR_COLOR):
             if i==0:
                 continue
-            class_color_map[class_map==i] = np.array(color, dtype=np.uint8)[::-1]
+            class_color_map[class_map==i] = (np.array(color)*255).astype(np.uint8)[::-1]
         
         class_view = cv2.resize(class_color_map, (int(class_map.shape[1]*3), int(class_map.shape[0]*3)), cv2.INTER_NEAREST)
         cv2.imshow("class map", class_view)
