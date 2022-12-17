@@ -5,6 +5,9 @@ import open3d as o3d
 import message_filters
 import tf2_ros
 
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
+
 from rclpy.time import Time
 from rclpy.node import Node
 from nav_msgs.msg import Odometry
@@ -18,25 +21,37 @@ class OdomCorrector(Node):
         self.base_odom = Odometry()
         self.transform_pub = self.create_publisher(TransformStamped, "/base_footprint", 1)
         base_msg = self.create_subscription(TFMessage, "/tf", self.tf_callback, 10)
-        odom_msg = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
+        # odom_msg = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
+        
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+        
         self.base_odom_publsiher = self.create_publisher(Odometry, "/new_odom", 1)
         self.prv_pose = [0, 0, 0, 0]
         self.footprint = 1
         self.outlier_cnt = 0
         self.frame_cnt = 0
+        self.odom_base = np.identity(4)
+        self.base_foot = np.identity(4)
 
     def tf_callback(self, tf):
         transform = tf.transforms
         tf = transform[0]
+        if tf.child_frame_id == "odom" and tf.header.frame_id == "map":
+            self.odom_base = self.tf_to_matrix(tf)
+        if tf.child_frame_id == "base_footprint" and tf.header.frame_id == "odom":
+            self.base_foot = self.tf_to_matrix(tf)
+        robot_pose = self.odom_base @ self.base_foot
+        self.pub_new_odom(tf.header.stamp, robot_pose, robot_pose)
+
+    def tf_to_matrix(self, tf):
         tf_rot, tf_trans = tf.transform.rotation, tf.transform.translation
         tf_quaternion = tf_rot.w, tf_rot.x, tf_rot.y, tf_rot.z
-        if tf_rot.x != 0 or tf_rot.y != 0:
-            pass
         assert np.isclose(np.linalg.norm(tf_quaternion), 1, 0.0001), f"[pose_to_matrix] quaterion norm={np.linalg.norm(tf_quaternion)}"
         tf_matrix = np.identity(4)
         tf_matrix[:3, 3] = np.array([tf_trans.x, tf_trans.y, tf_trans.z])
         tf_matrix[:3, :3] = o3d.geometry.get_rotation_matrix_from_quaternion(tf_quaternion)
-        self.footprint = tf_matrix
+        return tf_matrix
 
     def odom_callback(self, odom):
         time = Time.from_msg(odom.header.stamp).to_msg()
@@ -46,6 +61,7 @@ class OdomCorrector(Node):
         assert np.isclose(np.linalg.norm(odom_quaternion), 1, 0.0001), f"[pose_to_matrix] quaterion norm={np.linalg.norm(odom_quaternion)}"
         odom_matrix[:3, :3] = o3d.geometry.get_rotation_matrix_from_quaternion(odom_quaternion)
         odom_matrix[:3, 3] = np.array(odom_pose)
+        self.odom_base = odom_matrix
         new_matrix = self.footprint@odom_matrix
         self.pub_new_odom(time, new_matrix, odom_matrix)
 
@@ -114,7 +130,7 @@ class OdomCorrector(Node):
         plt.plot(x, y, 'bo')
         self.frame_cnt += 1
         if self.frame_cnt % 20 == 0:
-            plt.savefig("new_odom_base.png")
+            plt.savefig("/home/ri/colcon_ws/src/lidar2map/data/new_odom_base.png")
     
 def main(args=None):
     rclpy.init(args=args)

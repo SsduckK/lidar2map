@@ -7,6 +7,7 @@ from std_msgs.msg import Int16MultiArray
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 
+
 class MapPublisher(Node):
     def __init__(self, map_image):
         super().__init__('map_pub')
@@ -26,7 +27,7 @@ class MapPublisher(Node):
     
 def main(args=None):
     rclpy.init(args=args)
-    image = "/home/ri/bagfiles/221026/map/first_date-second.pgm"
+    image = "/home/ri/bagfiles/1216/depth/map.pgm"
     node = MapPublisher(image)
     rclpy.spin(node)
 

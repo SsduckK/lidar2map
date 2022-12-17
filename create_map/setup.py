@@ -22,7 +22,9 @@ setup(
         'console_scripts': [
         f'map_pub = {package_name}.map_publisher:main',
         f'mapping = {package_name}.mapping:main',
-        f'new_odom = {package_name}.odom_correction:main'
+        f'new_odom = {package_name}.odom_correction:main',
+        f'tf_filter = {package_name}.tf_filter:main',
+        f'tf_new = {package_name}.tf_correction:main',
         ],
     },
 )

@@ -25,7 +25,7 @@ class DepthToMap():
 
         points_rbt = self.transform_point_cloud(points_opt, cfg.IR_TO_ROBOT)
         points_glb = self.transform_point_cloud(points_rbt, base_to_glb)
-        # points_glb = self.transform_point_cloud(points_glb, default_matrix)
+        #points_glb = self.transform_point_cloud(points_glb, default_matrix)
         self.grid_label_count += self.count_label(self.grid_label_count, points_glb, label)
         print("valid label:", np.sum(label >= 0))
         return self.grid_label_count, points_glb
@@ -39,7 +39,7 @@ class DepthToMap():
 
     def default_tf_matrix(self):
         matrix = np.identity(4)
-        angle = np.deg2rad(-6)
+        angle = np.deg2rad(0)
         quaternion = np.array([np.cos(angle/2.), 0.0, 0.0, -np.sin(angle/2.)])
         assert np.isclose(np.linalg.norm(quaternion), 1, 0.001), f"[pose_to_matrix] quaterion norm={np.linalg.norm(quaternion)}"
         matrix[:3, :3] = o3d.geometry.get_rotation_matrix_from_quaternion(quaternion)

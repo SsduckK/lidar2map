@@ -3,6 +3,7 @@ import os
 import numpy as np
 import open3d as o3d
 import cv2
+import matplotlib.pyplot as plt
 from cv_bridge import CvBridge
 from rclpy.node import Node
 from sensor_msgs.msg import Image
@@ -21,21 +22,23 @@ class MultiMsgSub(Node):
         super().__init__('subsribe_multi_msg')
         self.map_, self.map_shape = np.zeros((1, 1)), 0
         self.sub_data_heap = {key: {"time": np.zeros(0), "data": []} for key in ["odom", "lidar", "depth"]}
-        self.tolerance = 1e+8
+        # self.tolerance = 1e+8
+        self.tolerance = 5251135165601792.0
         self.br = CvBridge()
         self.grid_map = None
         self.num_ctgr = 12       # TODO: read ros parameter
         self.label_map = None
         self.callback_count = 0
         self.use_depth = True
-        self.use_lidar = True
+        self.use_lidar = False
         map2d = self.create_subscription(Image, "grid_map", self.map_callback, 10)
         odom_msg = self.create_subscription(Odometry, "/new_odom", self.odom_callback, 10)
+        # odom_msg = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
         segmap_msg = self.create_subscription(Image, "/inference_segmap", self.segmap_callback, 10)
         if self.use_depth:
             depth_msg = self.create_subscription(Image, "/camera/depth/image_rect_raw", self.depth_callback, 10)
         if self.use_lidar:
-            lidar_msg = self.create_subscription(LaserScan, "/scan_filtered", self.lidar_callback, 10)
+            lidar_msg = self.create_subscription(LaserScan, "/scan", self.lidar_callback, 10)
         self.visualize = False
         self.vis = o3d.visualization.Visualizer()
         # self.vis = o3d.visualization.Visualizer()
@@ -74,7 +77,6 @@ class MultiMsgSub(Node):
         segmap = self.br.imgmsg_to_cv2(segmap)
         if self.grid_map is None:
             return
-
         sync_odom, odom_diff = self.sync_data(segmap_time, self.sub_data_heap["odom"]["time"], self.sub_data_heap["odom"]["data"])
         sync_depth, depth_diff = self.sync_data(segmap_time, self.sub_data_heap["depth"]["time"], self.sub_data_heap["depth"]["data"])
         sync_lidar, lidar_diff = self.sync_data(segmap_time, self.sub_data_heap["lidar"]["time"], self.sub_data_heap["lidar"]["data"])
@@ -107,9 +109,13 @@ class MultiMsgSub(Node):
         self.show_class_color_map(grid_map, class_map)
         self.callback_count += 1
         print("callback count:", self.callback_count)
-        if self.callback_count == 900:
+        if self.callback_count == 1300:
             self.finalize(class_map)
-    
+
+    def draw_point(self, x, y):
+        plt.plot(x, y, 'bo')
+        plt.savefig("/home/ri/colcon_ws/src/lidar2map/data/run.png")
+
     def lidar_to_point_cloud(self, ranges):
         idx = np.arange(360)
         ranges = np.array(ranges)
@@ -165,6 +171,8 @@ class MultiMsgSub(Node):
 
     def convert_to_semantic_map(self, grid_count):
         class_map = np.argmax(grid_count, axis=2)
+        grid_map_mask = np.array([self.grid_map==2], dtype=int)
+        class_map = class_map * grid_map_mask[0]
         return class_map
 
 
