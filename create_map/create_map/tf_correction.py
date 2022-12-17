@@ -17,14 +17,11 @@ from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import TransformStamped
 
 
-class OdomCorrector(Node):
+class OdomPublisher(Node):
     def __init__(self):
-        super().__init__('odom_corrector')
+        super().__init__('odom_publisher')
         self.base_odom = Odometry()
         self.base_odom_publsiher = self.create_publisher(Odometry, "/new_odom", 1)
-        #self.transform_pub = self.create_publisher(TransformStamped, "/base_footprint", 1)
-        #base_msg = self.create_subscription(TFMessage, "/tf", self.tf_callback, 10)
-        # odom_msg = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
 
         # Declare and acquire `target_frame` parameter
         self.target_frame = self.declare_parameter(
@@ -33,9 +30,8 @@ class OdomCorrector(Node):
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
-
         # Call on_timer function every second
-        self.timer = self.create_timer(1.0, self.on_timer)
+        self.timer = self.create_timer(0.2, self.on_timer)
 
     def on_timer(self):
         # Store frame names in variables that will be used to
@@ -67,14 +63,9 @@ class OdomCorrector(Node):
                 
 def main(args=None):
     rclpy.init(args=args)
-    node = OdomCorrector()
+    node = OdomPublisher()
     rclpy.spin(node)
 
     
 if __name__ == "__main__":
     main()
-
-    ###
-    # x, y, z = odom.pose.pose.position.x, odom.pose.pose.position.y, odom.pose.pose.position.z
-    #     plt.plot(x, y, 'ro')
-    #     plt.savefig("only_odom.png")

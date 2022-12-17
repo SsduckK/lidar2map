@@ -17,9 +17,13 @@ from create_map.build_map import GridMapRenderer
 from create_map.depth_to_map import DepthToMap
 
 
-class MultiMsgSub(Node):
+START_TIME_221216 = 1671186576547699200
+END_TIME_221216 = 1671186696404034560
+
+
+class GridMapClassifier(Node):
     def __init__(self):
-        super().__init__('subsribe_multi_msg')
+        super().__init__('grid_map_classifier')
         self.map_, self.map_shape = np.zeros((1, 1)), 0
         self.sub_data_heap = {key: {"time": np.zeros(0), "data": []} for key in ["odom", "lidar", "depth"]}
         # self.tolerance = 1e+8
@@ -31,6 +35,9 @@ class MultiMsgSub(Node):
         self.callback_count = 0
         self.use_depth = True
         self.use_lidar = False
+        self.mapping_on = False
+        self.latest_time = 0
+        self.count_thresh = 2
         map2d = self.create_subscription(Image, "grid_map", self.map_callback, 10)
         odom_msg = self.create_subscription(Odometry, "/new_odom", self.odom_callback, 10)
         # odom_msg = self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
@@ -41,14 +48,15 @@ class MultiMsgSub(Node):
             lidar_msg = self.create_subscription(LaserScan, "/scan", self.lidar_callback, 10)
         self.visualize = False
         self.vis = o3d.visualization.Visualizer()
+        if not os.path.isdir(cfg.RESULT_PATH):
+            os.makedirs(cfg.RESULT_PATH, exist_ok=True)
         # self.vis = o3d.visualization.Visualizer()
         # self.vis.create_window()
         # self.vis.get_view_control()
 
     def map_callback(self, map):
         map = self.br.imgmsg_to_cv2(map)
-        map = map[..., 0]
-        self.grid_map = np.zeros_like(map, dtype=np.uint8)
+        self.grid_map = map[..., 0]
         self.label_map = np.zeros((map.shape[0], map.shape[1], self.num_ctgr), dtype=int) if self.label_map is None else self.label_map
     
     def update_data(self, name, nano_sec, data):
@@ -62,24 +70,32 @@ class MultiMsgSub(Node):
         self.update_data("odom", nano_sec, odom.pose.pose)
 
     def lidar_callback(self, lidar):
-        nano_sec = Time.from_msg(lidar.header.stamp).nanoseconds
-        self.update_data("lidar", nano_sec, lidar.ranges)
+        self.latest_time = Time.from_msg(lidar.header.stamp).nanoseconds
+        if START_TIME_221216 < self.latest_time < END_TIME_221216:
+            self.mapping_on = True
+            self.update_data("lidar", self.latest_time, lidar.ranges)
         
     def depth_callback(self, depth):
-        nano_sec = Time.from_msg(depth.header.stamp).nanoseconds
-        self.update_data("depth", nano_sec, self.br.imgmsg_to_cv2(depth))
+        self.latest_time = Time.from_msg(depth.header.stamp).nanoseconds
+        print("time(s):", (self.latest_time - START_TIME_221216) // 1e9)
+        if START_TIME_221216 < self.latest_time < END_TIME_221216:
+            self.mapping_on = True
+            self.update_data("depth", self.latest_time, self.br.imgmsg_to_cv2(depth))
         
     def segmap_callback(self, segmap):
+        if self.mapping_on is False or self.grid_map is None:
+            return
         segmap_time = Time.from_msg(segmap.header.stamp).nanoseconds
         segmap = self.br.imgmsg_to_cv2(segmap)
-        if self.grid_map is None:
-            return
         sync_odom, odom_diff = self.sync_data(segmap_time, self.sub_data_heap["odom"]["time"], self.sub_data_heap["odom"]["data"])
         sync_depth, depth_diff = self.sync_data(segmap_time, self.sub_data_heap["depth"]["time"], self.sub_data_heap["depth"]["data"])
         sync_lidar, lidar_diff = self.sync_data(segmap_time, self.sub_data_heap["lidar"]["time"], self.sub_data_heap["lidar"]["data"])
         self.get_logger().info(f"sync_data: {odom_diff}, {depth_diff}, {lidar_diff}")
         if odom_diff < self.tolerance and lidar_diff < self.tolerance:
-            self.update_map(self.grid_map, sync_odom, sync_depth, sync_lidar, segmap)
+            class_color_map = self.update_map(self.grid_map, sync_odom, sync_depth, sync_lidar, segmap)
+            if self.latest_time > END_TIME_221216 - 1e9:
+                self.finalize(class_color_map)
+
 
     def sync_data(self, segmap_time, other_time, other_list):
         if len(other_list) == 0:
@@ -103,15 +119,17 @@ class MultiMsgSub(Node):
                 print("no points from depth map!!")
         
         class_map = self.convert_to_semantic_map(self.label_map)
-        self.show_class_color_map(grid_map, class_map)
+        class_color_map = self.show_class_color_map(grid_map, class_map)
         self.callback_count += 1
         print("callback count:", self.callback_count)
-        if self.callback_count == 1300:
-            self.finalize(class_map)
+        return class_color_map
 
-    def draw_point(self, x, y):
-        plt.plot(x, y, 'bo')
-        plt.savefig("/home/ri/colcon_ws/src/lidar2map/data/run.png")
+    def convert_to_semantic_map(self, grid_count):
+        class_map = np.argmax(grid_count, axis=2)
+        class_mask = np.max(grid_count, axis=2) > self.count_thresh
+        # grid_map_mask = np.array([self.grid_map==cfg.GRID_MAP_VALUE["wall"]], dtype=int)
+        class_map = class_map * class_mask
+        return class_map
 
     def lidar_to_point_cloud(self, ranges):
         idx = np.arange(360)
@@ -127,7 +145,6 @@ class MultiMsgSub(Node):
 
     def depth_to_point_cloud(self, depth):
         depth_image = o3d.geometry.Image((depth).astype(np.uint16))
-        print("depth shape", depth.shape)
         pcd = o3d.geometry.PointCloud.create_from_depth_image(depth_image, o3d.camera.PinholeCameraIntrinsic(*cfg.SCH_INSTRINSIC))
         pcd_cam = np.asarray(pcd.points)
         pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,2] < 2)[0])
@@ -141,26 +158,6 @@ class MultiMsgSub(Node):
             return None
         pcd_cam = np.concatenate([pcd_cam, np.ones((row, 1))], axis=1)
         return pcd_cam
-    
-    def finalize(self, class_map):
-        frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0.1])
-        grid_map = GridMapRenderer(self.grid_map).build
-        total_map = SemanticMapRenderer(class_map).build
-        o3d.visualization.draw_geometries([frame, grid_map, total_map])
-        for i in range(1, 12):
-            image = np.array(self.label_map[:, :, i], dtype=np.uint8)
-            cv2.imwrite(os.path.join(cfg.RESULT_PATH, f"label_count_{i}.png"), image)
-            image[image != 0] = 255
-            cv2.imwrite(os.path.join(cfg.RESULT_PATH, f"label_binary_{i}.png"), image)
-        print("saved")
-        o3d.io.write_triangle_mesh(os.path.join(cfg.RESULT_PATH, "map_pcl.ply"), grid_map + total_map)
-
-    def convert_to_semantic_map(self, grid_count, count_thresh):
-        class_map = np.argmax(grid_count, axis=2)
-        class_mask = np.max(grid_count, axis=2) > count_thresh
-        grid_map_mask = np.array([self.grid_map==cfg.GRID_MAP_VALUE["wall"]], dtype=int)
-        class_map = class_map * grid_map_mask[0]
-        return class_map
 
     def show_class_color_map(self, grid_map, class_map):
         print("grid_map", grid_map.shape, grid_map.dtype)
@@ -168,16 +165,32 @@ class MultiMsgSub(Node):
         for i, color in enumerate(cfg.CTGR_COLOR):
             if i==0:
                 continue
-            class_color_map[class_map==i] = [color[2] * 255, color[1] * 255, color[0] * 255]
-        cv2.imshow("class map", class_color_map)
+            class_color_map[class_map==i] = np.array(color, dtype=np.uint8)[::-1]
+        
+        class_view = cv2.resize(class_color_map, (int(class_map.shape[1]*3), int(class_map.shape[0]*3)), cv2.INTER_NEAREST)
+        cv2.imshow("class map", class_view)
         cv2.waitKey(10)
         return class_color_map
 
+    def finalize(self, class_color_map):
+        cv2.imwrite(os.path.join(cfg.RESULT_PATH, f"class_color_map.png"), class_color_map)
+        np.save(os.path.join(cfg.RESULT_PATH, f"label_count_map.npy"), self.label_map)
+        # frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0.1])
+        # grid_map = GridMapRenderer(self.grid_map).build
+        # total_map = SemanticMapRenderer(class_map).build
+        # o3d.visualization.draw_geometries([frame, grid_map, total_map])
+        # for i in range(1, 12):
+        #     image = np.array(self.label_map[:, :, i], dtype=np.uint8)
+        #     cv2.imwrite(os.path.join(cfg.RESULT_PATH, f"label_count_{i}.png"), image)
+        #     image[image != 0] = 255
+        #     cv2.imwrite(os.path.join(cfg.RESULT_PATH, f"label_binary_{i}.png"), image)
+        # print("saved")
+        # o3d.io.write_triangle_mesh(os.path.join(cfg.RESULT_PATH, "map_pcl.ply"), grid_map + total_map)
 
 
 def main(args=None):
     rclpy.init(args=args)
-    node = MultiMsgSub()
+    node = GridMapClassifier()
     rclpy.spin(node)
 
 

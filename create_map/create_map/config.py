@@ -1,6 +1,6 @@
 import numpy as np
 
-RESULT_PATH = "/home/ri/colcon_ws/src/lidar2map/data"
+RESULT_PATH = "/home/ri/colcon_ws/src/lidar2map/data/1216_depth_v1"
 
 NUM_CLASS = 1
 MAX_DEPTH = 3.5
