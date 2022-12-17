@@ -31,8 +31,8 @@ SEGLABELCOLOR = [{
     "id": 1,
     "color": [0.7, 0.8, 0.8],
     "trainId": 0
-},
-{
+    },
+    {
     "name": "Obstacle",
     "id": 2,
     "color": [0.2, 0.2, 0.2],
@@ -45,7 +45,7 @@ SEGLABELCOLOR = [{
     "trainId": 2
     },
     {
-    "name": "Window",
+    "name": "Window_sill",
     "id": 4,
     "color": [0.8, 0.4, 0],
     "trainId": 3
@@ -68,7 +68,7 @@ SEGLABELCOLOR = [{
     "color": [0.8, 0.9, 0.4],
     "trainId": 6
     },
-       {
+    {
     "name": "Furniture",
     "id": 8,
     "color": [0.4, 0.3, 0],
