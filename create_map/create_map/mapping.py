@@ -17,10 +17,6 @@ from create_map.build_map import GridMapRenderer
 from create_map.depth_to_map import DepthToMap
 
 
-START_TIME_221216 = 1671186576547699200
-END_TIME_221216 = 1671186696404034560
-
-
 class GridMapClassifier(Node):
     def __init__(self):
         super().__init__('grid_map_classifier')
@@ -34,8 +30,7 @@ class GridMapClassifier(Node):
         self.label_map = None
         self.callback_count = 0
         self.use_depth = True
-        self.use_lidar = False
-        self.mapping_on = False
+        self.use_lidar = True
         self.latest_time = 0
         self.count_thresh = 0
         map2d = self.create_subscription(Image, "grid_map", self.map_callback, 10)
@@ -71,19 +66,14 @@ class GridMapClassifier(Node):
 
     def lidar_callback(self, lidar):
         self.latest_time = Time.from_msg(lidar.header.stamp).nanoseconds
-        if START_TIME_221216 < self.latest_time < END_TIME_221216:
-            self.mapping_on = True
-            self.update_data("lidar", self.latest_time, lidar.ranges)
+        self.update_data("lidar", self.latest_time, lidar.ranges)
         
     def depth_callback(self, depth):
         self.latest_time = Time.from_msg(depth.header.stamp).nanoseconds
-        print("time(s):", (self.latest_time - START_TIME_221216) // 1e9)
-        if START_TIME_221216 < self.latest_time < END_TIME_221216:
-            self.mapping_on = True
-            self.update_data("depth", self.latest_time, self.br.imgmsg_to_cv2(depth))
+        self.update_data("depth", self.latest_time, self.br.imgmsg_to_cv2(depth))
         
     def segmap_callback(self, segmap):
-        if self.mapping_on is False or self.grid_map is None:
+        if self.grid_map is None:
             return
         segmap_time = Time.from_msg(segmap.header.stamp).nanoseconds
         segmap = self.br.imgmsg_to_cv2(segmap)
@@ -91,9 +81,9 @@ class GridMapClassifier(Node):
         sync_depth, depth_diff = self.sync_data(segmap_time, self.sub_data_heap["depth"]["time"], self.sub_data_heap["depth"]["data"])
         sync_lidar, lidar_diff = self.sync_data(segmap_time, self.sub_data_heap["lidar"]["time"], self.sub_data_heap["lidar"]["data"])
         self.get_logger().info(f"sync_data: {odom_diff}, {depth_diff}, {lidar_diff}")
-        if odom_diff < self.tolerance and lidar_diff < self.tolerance:
+        if odom_diff < self.tolerance and depth_diff < self.tolerance and lidar_diff < self.tolerance:
             class_color_map = self.update_map(self.grid_map, sync_odom, sync_depth, sync_lidar, segmap)
-            if self.latest_time > END_TIME_221216 - 1e9:
+            if self.callback_count == 480:
                 self.finalize(class_color_map)
 
 
@@ -106,8 +96,6 @@ class GridMapClassifier(Node):
         return sync_other, time_diff
 
     def update_map(self, grid_map, odom, depth, lidar, segmap):
-        cv2.imshow("seg_map", segmap)
-        cv2.waitKey(10)
         if lidar is not None:
             lidar_pts = self.lidar_to_point_cloud(lidar)
             lidar_map = DepthToMap(grid_map, odom, lidar_pts, segmap)
@@ -176,8 +164,8 @@ class GridMapClassifier(Node):
         return class_color_map
 
     def finalize(self, class_color_map):
-        cv2.imwrite(os.path.join(cfg.RESULT_PATH, f"class_color_map.png"), class_color_map)
-        np.save(os.path.join(cfg.RESULT_PATH, f"label_count_map.npy"), self.label_map)
+        cv2.imwrite(os.path.join(cfg.RESULT_PATH, f"class_color_map_all.png"), class_color_map)
+        np.save(os.path.join(cfg.RESULT_PATH, f"label_count_map_all.npy"), self.label_map)
         # frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0.1])
         # grid_map = GridMapRenderer(self.grid_map).build
         # total_map = SemanticMapRenderer(class_map).build

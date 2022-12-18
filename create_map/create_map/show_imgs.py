@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-def show_imgs(titled_imgs, wnd_title, columns, min_width=None):
+def show_imgs(titled_imgs, wnd_title, columns, min_width=None, wait_key=0):
     # convert gray images to bgr images
     titled_imgs = gray_to_bgr(titled_imgs)
     # prepare merged image
@@ -20,7 +20,7 @@ def show_imgs(titled_imgs, wnd_title, columns, min_width=None):
     if min_width is not None and result_img.shape[1] < min_width:
         result_img = pad_img(result_img, min_width)
     cv2.imshow(wnd_title, result_img)
-    cv2.waitKey()
+    cv2.waitKey(wait_key)
     return result_img
 
 
