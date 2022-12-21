@@ -6,19 +6,18 @@ import create_map.config as cfg
 
 
 class MapRenderer:
-    def __init__(self, map, ctgr=cfg.CTGR, ctgr_heights=cfg.CTGR_HEIGHT, ctgr_colors=cfg.CTGR_COLOR):
+    def __init__(self, map, ctgr=list(cfg.CTGR_NAME_TO_ID), ctgr_heights=cfg.CTGR_HEIGHT, ctgr_colors=cfg.CTGR_COLOR_BGR8U):
         self.USE_OBSTACLE = True
         self.SEMANTIC = True
         # self.categories = ["nothing", "floor", "wall", "door", "obstacle", "window"]
         self.categories = ctgr
         self.ctgr_heights = ctgr_heights
         self.default_height = 0
-        self.ctgr_colors = ctgr_colors
+        self.ctgr_colors_bgr8u = ctgr_colors
         self.map = map
         v, t = self.create_mesh_data(self.map)
         self.vert_packs = v
         self.tria_packs = t
-        # self.draw_mesh_2d()
         self.build = self.draw_mesh_3d()
 
     def create_mesh_data(self, map):
@@ -99,22 +98,6 @@ class MapRenderer:
         sqaure_tris += offset
         return sqaure_tris
 
-    def draw_mesh_2d(self):
-        map_2d = np.flip(self.map.copy(), 0)
-        x_axis, y_axis = map_2d.shape
-        img = np.zeros((x_axis * 10, y_axis * 10, 3), np.uint8) + 255
-        for ctgr_idx, category in enumerate(self.categories):
-            color = self.ctgr_colors[ctgr_idx].copy()
-            color = [color[i] * 255 for i in range(len(color))]
-            color[0], color[2] = color[2], color[0]
-            if ctgr_idx == 0:
-                continue
-            y, x = np.where(map_2d == ctgr_idx)
-            for x_, y_ in zip(x, y):
-                img = cv2.rectangle(img, (x_ * 10, y_ * 10), (x_ * 10 + 9, y_ * 10 + 9), color, -1)
-        cv2.imshow("2D", img)
-        cv2.waitKey()
-
     def draw_mesh_3d(self):
         # meshes = []
         meshes = o3d.geometry.TriangleMesh()
@@ -124,7 +107,7 @@ class MapRenderer:
             vertices = self.vert_packs[ctgr_idx]
             triangles = self.tria_packs[ctgr_idx]
             triangles = np.reshape(triangles, (-1, 3))
-            mesh = self.create_mesh_object(vertices, triangles, self.ctgr_colors[ctgr_idx])
+            mesh = self.create_mesh_object(vertices, triangles, self.ctgr_colors_bgr8u[ctgr_idx])
             # meshes.append(mesh)
             meshes += mesh
         mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0.1])
@@ -145,10 +128,12 @@ class MapRenderer:
             vertices = np.reshape(vertices, (-1, 3))
             triangles = self.get_triangle_2d(tri_2d_count)
             triangles = np.reshape(triangles, (-1, 3))
-            mesh = self.create_mesh_object(vertices, triangles, self.ctgr_colors[ctgr_idx])
+            mesh = self.create_mesh_object(vertices, triangles, self.ctgr_colors_bgr8u[ctgr_idx])
             meshes.append(mesh)
 
-    def create_mesh_object(self, vertices, triangles, color):
+    def create_mesh_object(self, vertices, triangles, bgr8u):
+        print("bgr8u", bgr8u)
+        color = bgr8u[::-1].astype(float) / 255.
         vert = o3d.utility.Vector3dVector(vertices)
         tri = o3d.utility.Vector3iVector(triangles)
         mesh = o3d.geometry.TriangleMesh(vert, tri)
@@ -191,7 +176,7 @@ class GridMapRenderer(MapRenderer):
     def __init__(self, map):
         ctgr = ["None", "Floor", "Wall"]
         ctgr_height = [0, 0.1, 0.1]
-        ctgr_color = [[0.7, 0.7, 0.7], [1, 1, 1], [0, 0, 0]]
+        ctgr_color = (np.array([[0.7, 0.7, 0.7], [1, 1, 1], [0, 0, 0]]) * 255).astype(np.uint8)
         super().__init__(map, ctgr, ctgr_height, ctgr_color)
         self.default_height = 0
 

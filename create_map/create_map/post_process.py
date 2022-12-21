@@ -9,6 +9,9 @@ from show_imgs import show_imgs
 from create_map.build_map import SemanticMapRenderer
 from create_map.build_map import GridMapRenderer
 
+MIN_CLASS_COUNT = 10
+
+
 def main():
     grid_map = get_grid_map()
     maps = load_maps()
@@ -23,7 +26,7 @@ def main():
     show_2d_map(class_map, grid_map, "post")
     show_3d_map(class_map, grid_map, "post")
 
-    final_maps = apply_process(post_maps, lambda x: grid_filter(x, grid_map))
+    final_maps = apply_process(maps, lambda x: grid_filter(x, grid_map))
     visualize_maps(final_maps, "grid maps", 1.5)
     class_map = get_class_map(final_maps)
     show_2d_map(class_map, grid_map, "grid")
@@ -37,7 +40,7 @@ def get_grid_map():
 def load_maps():
     label_names = {label["id"]: label["name"] for label in cfg.SEGLABELCOLOR}
     maps = {}
-    file = op.join(cfg.RESULT_PATH, "label_count_map.npy")
+    file = op.join(cfg.RESULT_PATH, "label_count_map_all_zlimit2.npy")
     label_count_map = np.load(file, 'r')
     print("label_count_map", label_count_map.shape)
     max_val = np.max(label_count_map) * 0.8
@@ -57,11 +60,17 @@ def visualize_maps(maps, title, zoom):
 
 def get_class_map(map):
     none = np.zeros((map["Wall"].shape[0], map["Wall"].shape[1]))
-    ctgr = list(map.values())
-    ctgr.insert(0, none)
-    ctgr = np.array(ctgr)
-    ctgr = ctgr.transpose(1, 2, 0)
-    return ctgr
+    class_count = list(map.values())
+    class_count.insert(0, none)
+    class_count = np.stack(class_count, axis=2)
+    class_id_map = np.argmax(class_count, axis=2)
+    class_max_cnt = np.max(class_count, axis=2)
+    class_id_map *= (class_max_cnt >= MIN_CLASS_COUNT)
+    class_id_remap = class_id_map.copy()
+    for ori_name, new_name in cfg.REMAP_CLASS.items():
+        ori_id, new_id = cfg.CTGR_NAME_TO_ID[ori_name], cfg.CTGR_NAME_TO_ID[new_name]
+        class_id_remap[class_id_map == ori_id] = new_id
+    return class_id_remap
     
 
 def apply_process(maps, f):
@@ -99,31 +108,28 @@ def grid_filter(label_map, grid_map):
     return label_map
 
 
-def show_2d_map(class_count, grid_map, style):
-    class_id_map = np.argmax(class_count, axis=2)
+def show_2d_map(class_id_map, grid_map, style):
     class_color_map = grid_map.copy()
-    for i, color in enumerate(cfg.CTGR_COLOR):
+    for i, color in enumerate(cfg.CTGR_COLOR_BGR8U):
         if i==0:
             continue
-        class_color_map[class_id_map==i] = (np.array(color)*255).astype(np.uint8)[::-1]
-    class_color_map = cv2.resize(class_color_map, (int(grid_map.shape[1]*3), int(grid_map.shape[0]*3)), cv2.INTER_NEAREST)
+        class_color_map[class_id_map==i] = color
+    cv2.imwrite(op.join(cfg.RESULT_PATH, style + "_2d_map.png"), class_color_map)
+    # class_color_map = cv2.resize(class_color_map, (int(grid_map.shape[1]), int(grid_map.shape[0]*3)), cv2.INTER_NEAREST)
     cv2.imshow(style + " class map", class_color_map)
-    cv2.imwrite(cfg.RESULT_PATH + "")
     cv2.waitKey(100)
 
 
-def show_3d_map(layer_class_map, grid_gray_map, style):
+def show_3d_map(class_id_map, grid_gray_map, style):
     frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0.1])
     grid_map = grid_gray_map.copy()
     grid_map[grid_map == 0] = 2
     grid_map[grid_map == 205] = 0
     grid_map[grid_map == 254] = 1
-    class_map = np.argmax(layer_class_map, axis=2)
-    class_mask = np.max(layer_class_map, axis=2) > 2
-    class_map = class_map * class_mask
     grid_map = GridMapRenderer(grid_map[..., 0]).build
-    total_map = SemanticMapRenderer(class_map).build
+    total_map = SemanticMapRenderer(class_id_map).build
     o3d.visualization.draw_geometries([frame, grid_map, total_map])
+    o3d.io.write_triangle_mesh(op.join(cfg.RESULT_PATH, style + "_pcl.ply"), grid_map + total_map) 
 
 
 if __name__ == "__main__":

@@ -35,7 +35,7 @@ SEGLABELCOLOR = [{
     {
     "name": "Obstacle",
     "id": 2,
-    "color": [0.2, 0.2, 0.2],
+    "color": [1, 0.2, 0.2],
     "trainId": 1
     },
     {
@@ -94,8 +94,21 @@ SEGLABELCOLOR = [{
     }
 ]
 
-CTGR = ["None"] + [label["name"] for label in SEGLABELCOLOR]
-CTGR_COLOR = [[0, 0, 0]] + [label["color"] for label in SEGLABELCOLOR]
-CTGR_HEIGHT = [1, 1, 0.7, 0.7, 1.5, 1.5, 2, 2, 1, 2, 1.5, 1.5, 1]
-
 GRID_MAP_VALUE = {"unknown": 205, "floor": 254, "wall": 0}
+
+CTGR_COLOR_BGR8U = [np.array([0, 0, 0], dtype=np.uint8)] + \
+             [(np.array(label["color"])*255).astype(np.uint8)[::-1] for label in SEGLABELCOLOR]
+CTGR_HEIGHT = [1, 1, 0.7, 0.7, 1.5, 1.5, 2, 2, 1, 2, 1.5, 1.5, 1]
+CTGR_NAME_TO_ID = {label["name"]: label["id"] for label in SEGLABELCOLOR}
+REMAP_CLASS = {"Wall": "Wall",
+               "Obstacle" : "Obstacle",
+               "Floor" : "Floor",
+               "Window_sill": "Window",
+               "Ceiling": "Ceiling",
+               "Person": "Obstacle",
+               "Door": "Door",
+               "Furniture": "Obstacle",
+               "Electronics": "Obstacle",
+               "Furniture_wall":"Obstacle",
+               "Window": "Window"
+               }

@@ -30,7 +30,7 @@ class GridMapClassifier(Node):
         self.label_map = None
         self.callback_count = 0
         self.use_depth = True
-        self.use_lidar = True
+        self.use_lidar = False
         self.latest_time = 0
         self.count_thresh = 0
         map2d = self.create_subscription(Image, "grid_map", self.map_callback, 10)
@@ -83,7 +83,7 @@ class GridMapClassifier(Node):
         self.get_logger().info(f"sync_data: {odom_diff}, {depth_diff}, {lidar_diff}")
         if odom_diff < self.tolerance and depth_diff < self.tolerance and lidar_diff < self.tolerance:
             class_color_map = self.update_map(self.grid_map, sync_odom, sync_depth, sync_lidar, segmap)
-            if self.callback_count == 480:
+            if self.callback_count == 500:
                 self.finalize(class_color_map)
 
 
@@ -139,11 +139,11 @@ class GridMapClassifier(Node):
         depth_image = o3d.geometry.Image((depth).astype(np.uint16))
         pcd = o3d.geometry.PointCloud.create_from_depth_image(depth_image, o3d.camera.PinholeCameraIntrinsic(*cfg.SCH_INSTRINSIC))
         pcd_cam = np.asarray(pcd.points)
-        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,2] < 2)[0])
-        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,0] < 0.4)[0])
-        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,0] > -0.4)[0])
-        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,1] < 0.1)[0])
-        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,1] > -0.9)[0])
+        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,2] < 3)[0])
+        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,0] < 0.6)[0])
+        pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,0] > -0.6)[0])
+        # pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,1] < 0.1)[0])
+        # pcd = pcd.select_by_index(np.where(np.asarray(pcd.points)[:,1] > -0.9)[0])
         pcd_cam = np.asarray(pcd.points)
         row = pcd_cam.shape[0]
         if row == 0:
@@ -153,10 +153,10 @@ class GridMapClassifier(Node):
 
     def show_class_color_map(self, grid_map, class_map):
         class_color_map = cv2.cvtColor(grid_map, cv2.COLOR_GRAY2RGB)
-        for i, color in enumerate(cfg.CTGR_COLOR):
+        for i, color in enumerate(cfg.CTGR_COLOR_BGR8U):
             if i==0:
                 continue
-            class_color_map[class_map==i] = (np.array(color)*255).astype(np.uint8)[::-1]
+            class_color_map[class_map==i] = color
         
         class_view = cv2.resize(class_color_map, (int(class_map.shape[1]*3), int(class_map.shape[0]*3)), cv2.INTER_NEAREST)
         cv2.imshow("class map", class_view)
@@ -164,8 +164,8 @@ class GridMapClassifier(Node):
         return class_color_map
 
     def finalize(self, class_color_map):
-        cv2.imwrite(os.path.join(cfg.RESULT_PATH, f"class_color_map_all.png"), class_color_map)
-        np.save(os.path.join(cfg.RESULT_PATH, f"label_count_map_all.npy"), self.label_map)
+        cv2.imwrite(os.path.join(cfg.RESULT_PATH, f"class_color_map_depth_xyzlimit22.png"), class_color_map)
+        np.save(os.path.join(cfg.RESULT_PATH, f"label_count_map_depth_xyzlimit22.npy"), self.label_map)
         # frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=1, origin=[0, 0, 0.1])
         # grid_map = GridMapRenderer(self.grid_map).build
         # total_map = SemanticMapRenderer(class_map).build

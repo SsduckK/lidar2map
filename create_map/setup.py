@@ -24,7 +24,7 @@ setup(
         f'mapping = {package_name}.mapping:main',
         f'new_odom = {package_name}.odom_correction:main',
         f'tf_filter = {package_name}.tf_filter:main',
-        f'tf_new = {package_name}.tf_correction:main',
+        f'tf_odom = {package_name}.tf_correction:main',
         ],
     },
 )
