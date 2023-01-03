@@ -6,8 +6,8 @@ import open3d as o3d
 
 import config as cfg
 from show_imgs import show_imgs
-from create_map.build_map import SemanticMapRenderer
-from create_map.build_map import GridMapRenderer
+from map_renderer.build_map import SemanticMapRenderer
+from map_renderer.build_map import GridMapRenderer
 
 MIN_CLASS_COUNT = 10
 
