@@ -3,8 +3,7 @@ import open3d as o3d
 import copy
 import cv2
 
-import create_map.config as cfg
-from create_map.build_map import SemanticMapRenderer
+import class_map_builder.config as cfg
 
 
 class DepthToMap():

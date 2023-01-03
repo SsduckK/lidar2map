@@ -11,10 +11,10 @@ from nav_msgs.msg import Odometry
 from rclpy.time import Time
 from sensor_msgs.msg import LaserScan
 
-import create_map.config as cfg
-from create_map.build_map import SemanticMapRenderer
-from create_map.build_map import GridMapRenderer
-from create_map.depth_to_map import DepthToMap
+import class_map_builder.config as cfg
+# from create_map.build_map import SemanticMapRenderer
+# from create_map.build_map import GridMapRenderer
+from class_map_builder.depth_to_map import DepthToMap
 
 
 class GridMapClassifier(Node):
